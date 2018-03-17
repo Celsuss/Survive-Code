@@ -12,6 +12,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "MotionControllerComponent.h"
 #include "BasicRifle.h"
+#include "Weapons/SurviveWeaponBase.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
@@ -43,7 +44,7 @@ ASurvivePlayer::ASurvivePlayer()
 	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
 	SpringArmComponent->SetupAttachment(capsule);
 	SpringArmComponent->bUsePawnControlRotation = true;
-	SpringArmComponent->SetRelativeLocation(FVector(0.f, 0.f, 10.f));
+	SpringArmComponent->SetRelativeLocation(FVector(0.f, 0.f, 45.f));
 
 	// Create Third Person CameraComponent
 	ThirdPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("ThirdPersonCamera"));
@@ -102,7 +103,7 @@ void ASurvivePlayer::BeginPlay()
 			ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 
 			// spawn the starting weapon
-			Weapon = World->SpawnActor<ABasicRifle>(WeaponClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+			Weapon = World->SpawnActor<ASurviveWeaponBase>(WeaponClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
 
 			Weapon->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
 			Weapon->SetOwner(this);

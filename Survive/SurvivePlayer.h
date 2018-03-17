@@ -12,7 +12,7 @@ class USkeletalMeshComponent;
 class UCameraComponent;
 class USpringArmComponent;
 class ASurviveProjectile;
-class ABasicRifle;
+class ASurviveWeaponBase;
 class USoundBase;
 class UAnimMontage;
 
@@ -80,7 +80,7 @@ protected:
 
 	/** Weapon Object */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
-	ABasicRifle* Weapon;
+	ASurviveWeaponBase* Weapon;
 
 	/** Location on gun mesh where projectiles should spawn. */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
@@ -116,7 +116,7 @@ protected:
 
 	/** Weapon class to spawn at start */
 	UPROPERTY(EditDefaultsOnly, Category = Weapon)
-	TSubclassOf<ABasicRifle> WeaponClass;
+	TSubclassOf<ASurviveWeaponBase> WeaponClass;
 
 	/** Sound to play each time we fire */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Gameplay)

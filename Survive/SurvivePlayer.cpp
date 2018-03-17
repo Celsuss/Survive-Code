@@ -65,7 +65,7 @@ ASurvivePlayer::ASurvivePlayer()
 	MeshThirdPerson->bCastDynamicShadow = false;
 	MeshThirdPerson->CastShadow = false;
 	MeshThirdPerson->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
-	MeshThirdPerson->SetRelativeLocation(FVector(0.f, 0.f, -80.f));
+	MeshThirdPerson->SetRelativeLocation(FVector(0.f, 0.f, -97.f));
 	if (HasAuthority()) {
 		MeshThirdPerson->SetHiddenInGame(true);
 		MeshThirdPerson->SetVisibility(false);

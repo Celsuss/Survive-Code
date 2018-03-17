@@ -3,14 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
+#include "Weapons/SurviveWeaponBase.h"
 #include "BasicRifle.generated.h"
 
-class USkeletalMeshComponent;
-class UDamageType;
-
 UCLASS()
-class SURVIVE_API ABasicRifle : public AActor
+class SURVIVE_API ABasicRifle : public ASurviveWeaponBase
 {
 	GENERATED_BODY()
 	
@@ -18,8 +15,8 @@ public:
 	// Sets default values for this actor's properties
 	ABasicRifle();
 
-	// Called from ASurvivePlayer
-	void Fire();
+	/** Call to fire the weapon */
+	virtual void Fire();
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -27,14 +24,4 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	USkeletalMeshComponent* m_MeshComponent;
-
-	/** Sound to play each time we fire */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
-	USoundBase* FireSound;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Gameplay)
-	TSubclassOf<UDamageType> DamageType;
 };

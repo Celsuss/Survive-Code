@@ -82,6 +82,10 @@ protected:
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	ASurviveWeaponBase* Weapon;
 
+	/** Secondary weapon object */
+	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+	ASurviveWeaponBase* SecondaryWeapon;
+
 	/** Location on gun mesh where projectiles should spawn. */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USceneComponent* FP_MuzzleLocation;

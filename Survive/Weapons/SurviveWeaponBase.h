@@ -20,6 +20,9 @@ public:
 
 	/** Call to fire the weapon */
 	virtual void Fire();
+
+	/** Set hide mesh */
+	virtual void SetHideMesh(const bool hide);
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

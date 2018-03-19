@@ -16,7 +16,7 @@ public:
 	ABasicRifle();
 
 	/** Call to fire the weapon */
-	virtual void Fire();
+	virtual void Fire() override;
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

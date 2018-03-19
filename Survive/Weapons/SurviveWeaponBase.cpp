@@ -29,3 +29,9 @@ void ASurviveWeaponBase::Fire()
 {
 
 }
+
+void ASurviveWeaponBase::SetHideMesh(const bool hide)
+{
+	m_MeshComponent->SetHiddenInGame(hide);
+	m_MeshComponent->SetVisibility(!hide);
+}

@@ -104,9 +104,16 @@ void ASurvivePlayer::BeginPlay()
 
 			// spawn the starting weapon
 			Weapon = World->SpawnActor<ASurviveWeaponBase>(WeaponClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
-
 			Weapon->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
 			Weapon->SetOwner(this);
+
+			SecondaryWeapon = World->SpawnActor<ASurviveWeaponBase>(WeaponClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+			SecondaryWeapon->AttachToComponent(MeshThirdPerson, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("ShoulderHolster"));
+			SecondaryWeapon->SetOwner(this);
+			if (HasAuthority()) {
+				// Implement hide method in weapon base
+				SecondaryWeapon->SetHideMesh(true);
+			}
 		}
 	}
 }
@@ -230,6 +237,7 @@ void ASurvivePlayer::OnToggleCamera()
 		ThirdPersonCameraComponent->SetActive(false);
 
 		Weapon->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
+		SecondaryWeapon->SetHideMesh(true);
 	}
 	else {
 		// Switch to third person
@@ -244,6 +252,7 @@ void ASurvivePlayer::OnToggleCamera()
 		FirstPersonCameraComponent->SetActive(false);
 
 		Weapon->AttachToComponent(MeshThirdPerson, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
+		SecondaryWeapon->SetHideMesh(false);
 	}
 }
 

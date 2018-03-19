@@ -7,9 +7,12 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/InputSettings.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "MotionControllerComponent.h"
+#include "BasicRifle.h"
+#include "Weapons/SurviveWeaponBase.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
@@ -31,11 +34,23 @@ ASurvivePlayer::ASurvivePlayer()
 	capsule->InitCapsuleSize(55.f, 96.0f);
 	//capsule->SetupAttachment(m_RootComponent);
 
-	// Create a CameraComponent	
+	// Create a FirstPerson CameraComponent	
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
 	FirstPersonCameraComponent->SetupAttachment(capsule);
 	FirstPersonCameraComponent->RelativeLocation = FVector(-39.56f, 1.75f, 64.f); // Position the camera
 	FirstPersonCameraComponent->bUsePawnControlRotation = true;
+
+	// Create a SpringArmComponent for the ThirdPersonCamera
+	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
+	SpringArmComponent->SetupAttachment(capsule);
+	SpringArmComponent->bUsePawnControlRotation = true;
+	SpringArmComponent->SetRelativeLocation(FVector(0.f, 0.f, 45.f));
+
+	// Create Third Person CameraComponent
+	ThirdPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("ThirdPersonCamera"));
+	ThirdPersonCameraComponent->SetupAttachment(SpringArmComponent);
+	ThirdPersonCameraComponent->SetRelativeLocation(FVector(0.f, 45.f, 0.f));
+	ThirdPersonCameraComponent->SetActive(false);
 
 	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
 	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh1P"));
@@ -51,41 +66,56 @@ ASurvivePlayer::ASurvivePlayer()
 	MeshThirdPerson->bCastDynamicShadow = false;
 	MeshThirdPerson->CastShadow = false;
 	MeshThirdPerson->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
-	MeshThirdPerson->SetRelativeLocation(FVector(0.f, 0.f, -80.f));
+	MeshThirdPerson->SetRelativeLocation(FVector(0.f, 0.f, -97.f));
 	if (HasAuthority()) {
 		MeshThirdPerson->SetHiddenInGame(true);
 		MeshThirdPerson->SetVisibility(false);
 	}
 
-	// Create a gun mesh component
-	FP_Gun = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FP_Gun"));
-	FP_Gun->SetOnlyOwnerSee(true);			// only the owning player will see this mesh
-	FP_Gun->bCastDynamicShadow = false;
-	FP_Gun->CastShadow = false;
-	// FP_Gun->SetupAttachment(Mesh1P, TEXT("GripPoint"));
-	FP_Gun->SetupAttachment(RootComponent);
-
 	FP_MuzzleLocation = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLocation"));
-	FP_MuzzleLocation->SetupAttachment(FP_Gun);
+	// TODO: Setup Muzzle location and attachment
+	FP_MuzzleLocation->SetupAttachment(capsule);
 	FP_MuzzleLocation->SetRelativeLocation(FVector(0.2f, 48.4f, -10.6f));
 
 	// Default offset from the character location for projectiles to spawn
 	GunOffset = FVector(100.0f, 0.0f, 10.0f);
-
-	// Note: The ProjectileClass and the skeletal mesh/anim blueprints for Mesh1P, FP_Gun, and VR_Gun 
-	// are set in the derived blueprint asset named MyCharacter to avoid direct content references in C++.
-
-	// Uncomment the following line to turn motion controllers on by default:
-	//bUsingMotionControllers = true;
 }
 
 // Called when the game starts or when spawned
 void ASurvivePlayer::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	//Attach gun mesh component to Skeleton, doing it here because the skeleton is not yet created in the constructor
-	FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
+
+	// Try and spawn starting weapon
+	if (WeaponClass)
+	{
+		UWorld* const World = GetWorld();
+		if (World)
+		{
+			const FRotator SpawnRotation = GetControlRotation();
+			const FVector SpawnLocation = GetActorLocation();
+
+			// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
+			//const FVector SpawnLocation = ((FP_MuzzleLocation != nullptr) ? FP_MuzzleLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
+
+			//Set Spawn Collision Handling Override
+			FActorSpawnParameters ActorSpawnParams;
+			ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+
+			// spawn the starting weapon
+			Weapon = World->SpawnActor<ASurviveWeaponBase>(WeaponClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+			Weapon->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
+			Weapon->SetOwner(this);
+
+			SecondaryWeapon = World->SpawnActor<ASurviveWeaponBase>(WeaponClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+			SecondaryWeapon->AttachToComponent(MeshThirdPerson, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("ShoulderHolster"));
+			SecondaryWeapon->SetOwner(this);
+			if (HasAuthority()) {
+				// Implement hide method in weapon base
+				SecondaryWeapon->SetHideMesh(true);
+			}
+		}
+	}
 }
 
 // Called every frame
@@ -110,6 +140,9 @@ void ASurvivePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	// Bind fire event
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ASurvivePlayer::OnFire);
 
+	// Toggle First- and ThirdPerson Camera
+	PlayerInputComponent->BindAction("ToggleCamera", IE_Pressed, this, &ASurvivePlayer::OnToggleCamera);
+
 	//PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &ASurvivePlayer::OnResetVR);
 
 	// Bind movement events
@@ -125,28 +158,22 @@ void ASurvivePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	PlayerInputComponent->BindAxis("LookUpRate", this, &ASurvivePlayer::LookUpAtRate);
 }
 
+FVector ASurvivePlayer::GetPawnViewLocation() const
+{
+	if (FirstPersonCameraComponent->IsActive())
+		return FirstPersonCameraComponent->GetComponentLocation();
+	else if(ThirdPersonCameraComponent->IsActive())
+		return ThirdPersonCameraComponent->GetComponentLocation();
+
+	return Super::GetPawnViewLocation();
+}
+
 void ASurvivePlayer::OnFire()
 {
-	// try and fire a projectile
-	if (ProjectileClass != NULL)
-	{
-		UWorld* const World = GetWorld();
-		if (World != NULL)
-		{
-			{
-				const FRotator SpawnRotation = GetControlRotation();
-				// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
-				const FVector SpawnLocation = ((FP_MuzzleLocation != nullptr) ? FP_MuzzleLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
+	if (!Weapon)
+		return;
 
-				//Set Spawn Collision Handling Override
-				FActorSpawnParameters ActorSpawnParams;
-				ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
-
-				// spawn the projectile at the muzzle
-				World->SpawnActor<ASurviveProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
-			}
-		}
-	}
+	Weapon->Fire();
 
 	// try and play the sound if specified
 	if (FireSound != NULL)
@@ -194,5 +221,38 @@ void ASurvivePlayer::LookUpAtRate(float Rate)
 {
 	// calculate delta for this frame from the rate information
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+}
+
+void ASurvivePlayer::OnToggleCamera()
+{
+	if (ThirdPersonCameraComponent->IsActive()) {
+		// Switch to first person
+		MeshThirdPerson->SetHiddenInGame(true);
+		MeshThirdPerson->SetVisibility(false);
+
+		Mesh1P->SetHiddenInGame(false);
+		Mesh1P->SetVisibility(true);
+
+		FirstPersonCameraComponent->SetActive(true);
+		ThirdPersonCameraComponent->SetActive(false);
+
+		Weapon->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
+		SecondaryWeapon->SetHideMesh(true);
+	}
+	else {
+		// Switch to third person
+
+		MeshThirdPerson->SetHiddenInGame(false);
+		MeshThirdPerson->SetVisibility(true);
+
+		Mesh1P->SetHiddenInGame(true);
+		Mesh1P->SetVisibility(false);
+
+		ThirdPersonCameraComponent->SetActive(true);
+		FirstPersonCameraComponent->SetActive(false);
+
+		Weapon->AttachToComponent(MeshThirdPerson, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
+		SecondaryWeapon->SetHideMesh(false);
+	}
 }
 

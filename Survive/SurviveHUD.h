@@ -12,6 +12,8 @@ class ASurviveHUD : public AHUD
 	GENERATED_BODY()
 
 public:
+	static const float CrosshairOffset;
+
 	ASurviveHUD();
 
 	/** Primary draw call for the HUD */
